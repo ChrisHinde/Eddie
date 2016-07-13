@@ -1,12 +1,12 @@
-class EventHandler < BaseHandler
+class TaskHandler < BaseHandler
   include EddieMQTT_Listener
 
   def initialize
-    Eddie.messenger.subscribe 'events/#', self
+    Eddie.messenger.subscribe 'tasks/#', self
   end
 
   def self.add( params, thread )
-    thread.tell 'Add Event!'
+    thread.tell 'Add Task!'
   end
 
   def methods_str
@@ -18,8 +18,7 @@ class EventHandler < BaseHandler
   end
 
   def call( topic, payload )
-    top = topic.split('/states/').last
-    meth, rest = top.split('/',2)
+    meth = topic.split('/').last
 
     case meth
     when 'list'
@@ -31,5 +30,5 @@ class EventHandler < BaseHandler
 
 end
 
-puts "Event Handler Loading"
-Eddie.register "events", EventHandler.new
+puts "Task Handler Loading"
+Eddie.register "tasks", TaskHandler.new

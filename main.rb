@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-E_PORT = 4242
+E_PORT = 4042
 
 require 'socket'
 require 'active_record'
@@ -11,27 +11,36 @@ PROJECT_ROOT = File.dirname(File.absolute_path(__FILE__))
 
 require PROJECT_ROOT + '/lib/server.rb'
 require PROJECT_ROOT + '/lib/base_handler.rb'
+require PROJECT_ROOT + '/lib/mqtt.rb'
 
 Dir.glob(PROJECT_ROOT + '/models/*.rb') { |file| require file }
-Dir.glob(PROJECT_ROOT + '/handlers/*.rb') { |file| require file }
+#Dir.glob(PROJECT_ROOT + '/handlers/*.rb') { |file| require file }
 
 # include PiPiper
 
 class Eddie
+  @@mqtt = nil
 
   def self.main(port)
     init
 
+    @@mqtt = EddieMQTT.new @config['mqtt_server'], @config['mqtt_port'], @config['mqtt_id']
+
+    load_handlers
+
+    port = @config['port']
     server = TCPServer.open(port)
 
-    puts "Eddie listening on #{E_PORT}!"
+    puts "\n======================================="
+
+    puts "Eddie listening on #{port}!"
 
     loop do
 #      Thread.start server.accept do |client|
         client = server.accept
         puts "Got client"
 
-        client.puts "HELLO FRIEND! Eddie here v0.1b"
+        client.puts "HELLO FRIEND! Eddie here v0.1b\n"
         client.puts "LT " + Time.now.ctime
 
 	friend = login_user client
@@ -51,52 +60,20 @@ class Eddie
   end
 
   def self.login_user(client)
-    client.puts "FRIEND, PRESENT YOURSELF!"
+    client.puts "FRIEND, PRESENT YOURSELF!\n"
 
     username = client.gets.strip
 
-    client.puts "FRIEND, I REQUIRE A PASSWORD!"
+    client.puts "FRIEND, I REQUIRE A PASSWORD!\n"
 
     password = client.gets.strip
 
-    client.puts "FRIEND, I WELCOME YOU!"
+    client.puts "FRIEND, I WELCOME YOU!\n"
 
     friend = { name: username, accepted: true }
 
     return friend
   end
-
-=begin
-  def self.talk_to(client, friend)
-    loop do
-      str = client.gets.strip
-
-      case str.upcase
-      when /^EVENT/
-        EventHandler.incoming str[6..-1], client, friend
-      when /^TASK/
-        TaskHandler.incomig str[5..-1], client, friend
-      when /^MACRO/
-        MacroHandler.incoming str[5..-1], client, friend
-      when /^COMMAND/
-        CommandHandler.inoming str[8..-1], client, friend
-      when /^SAY/
-	client.puts "> " + str[4..-1]
-      when /^READ/
-        pin = str[5..-1].to_i
-        read_pin pin, client
-      when /^SET/
-        pin_info = str[4..-1].split
-	set_pin pin_info, client
-      when "EYB"
-	return false
-      else
-        puts "WHAT: " + str
-        client.puts "WAHT? <" + str + ">"
-      end
-    end
-  end
-=end
 
   def self.read_pin pn, client
    pin = PiPiper::Pin.new pin: pn, direction: :in
@@ -123,7 +100,26 @@ class Eddie
     client.puts "PIN #{pin_n} IS NOW " + val
   end
 
+  def self.register( id, handler )
+    unless @@handlers[id].nil?
+      raise "There's already an handler with ID '" + id + "'"
+    end
+
+    puts "Registering Handler '" + id + "'"
+
+    @@handlers[id] = handler
+  end
+
+  def self.get_handlers
+    @@handlers.keys
+  end
+
+  def self.messenger
+    @@mqtt
+  end
+
   private
+#    config = nil
 
     def self.init
       ActiveRecord::Base.logger = Logger.new(File.open('log/database.log', 'w'))
@@ -133,7 +129,22 @@ class Eddie
 
       require PROJECT_ROOT + '/config/schema.rb'
 
+      @config = YAML::load_file('config/config.yml')
     end
+
+    def self.load_handlers
+      puts "Loading Handlers"
+
+      Dir.glob(PROJECT_ROOT + '/handlers/*.rb') do |file|
+        require file
+      end
+    end
+
+    def bye
+      @_mqtt.disconnect
+    end
+
+    @@handlers = {}
 
 end
 

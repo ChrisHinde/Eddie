@@ -34,7 +34,7 @@ class EddieThread
   end
 
   def tell str
-    @client.puts str
+    @client.puts str + "\n"
   end
 
 
