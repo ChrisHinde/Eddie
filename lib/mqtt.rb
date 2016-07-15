@@ -213,10 +213,13 @@ class EddieMQTT
               listener.listener topic, payload, self
             rescue Exception => e
               puts "Listener Error: " + e.message
-              p x.backtrace.map{ |x|   
+              p e.backtrace
+=begin
+.map{ |x|   
      x.match(/^(.+?):(\d+)(|:in `(.+)')$/); 
     [$1,$2,$4] 
 }
+=end
             end
           end
         else

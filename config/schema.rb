@@ -55,11 +55,13 @@ ActiveRecord::Schema.define do
     end
   end
 
+#  add_column :macro_commands, :arguments, :text
 
   unless ActiveRecord::Base.connection.data_sources.include? 'macro_commands'
     create_table :macro_commands do |table|
       table.column :macro_id,    :integer
       table.column :command_id,  :integer
+      table.column :arguments,   :text
     end
   end
 

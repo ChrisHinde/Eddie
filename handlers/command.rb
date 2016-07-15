@@ -3,11 +3,12 @@ require 'json'
 class CommandHandler < BaseHandler
   include EddieMQTT_Listener
 
+  SCRIPT_DIR = 'commands/'
+
   def initialize
     Eddie.messenger.subscribe 'commands/#', self
 
     @@types = { 'internal' => 1, 'script' => 3 }
-
   end
 
   def self.add( params, thread )
@@ -40,7 +41,7 @@ class CommandHandler < BaseHandler
 
     cmd.title = data['title']
     cmd.description = data['desc']
-    cmd.arguments = data['arguments'].to_json
+    cmd.arguments = data['arguments'] #.to_json
 
     cmd.command = data['command']
 
@@ -64,11 +65,12 @@ class CommandHandler < BaseHandler
 
     unless cmd.nil?
       command = {
+        id:    cmd.id,
         title: cmd.title,
         desc:  cmd.description,
-        arguments: JSON.parse(cmd.arguments),
+        arguments: cmd.arguments,
         command: cmd.command,
-        type: Command.type_to_int(cmd.command_type)
+        type: Command.type_to_str(cmd.command_type)
       }
 
       Eddie.messenger.respond topic, command.to_json
@@ -87,11 +89,52 @@ class CommandHandler < BaseHandler
     if com.nil?
       Eddie.messenger.respond topic, "ERROR: No such command > #{cmd}"
     else
-      p payload
-      p rest
-      com.run
+#      p payload
+#      p rest
+
+      arguments = { '_topic' => topic, '_payload' => payload }
+
+      begin
+        args = JSON.parse payload
+        p args
+        args.each do |k,v|
+          arguments[k] = v unless k.first == '_'
+        end
+      rescue
+        arguments['argument'] = payload
+      end unless rest.nil?
+
+      com.run arguments, self
     end
   end
+
+  def run_internal cmd_name, arguments = nil, cmd = nil
+    case cmd_name
+    when 'publish'
+      raise "No arguments given for 'publish'" if arguments.nil?
+      Eddie.messenger.publish arguments['topic'], arguments['payload']
+      Eddie.messenger.respond arguments['_topic'], "SUCCESS: Published to '" + arguments['topic'] + "'"
+    else
+      raise "Unknown internal command: '#{cmd_name}'"
+    end
+  end
+
+  def run_script cmd_name, arguments = nil, cmd = nil
+    cmd_name.gsub! '/', ''
+
+    filename = PROJECT_ROOT + '/' + SCRIPT_DIR + cmd_name + '.rb'
+
+    p filename
+
+    if File.exists? filename
+      require filename
+
+      script_main arguments, cmd_name
+    else
+      raise "Unknown script command: '#{cmd_name}'"
+    end
+  end
+
 
   def methods_str
     return "[list,add,info,types,run]"
@@ -134,3 +177,13 @@ end
 
 puts "Command Handler Loading"
 Eddie.register "commands", CommandHandler.new
+=begin
+{"title":"pub","desc":"Publish!",
+"arguments":{"in": { "topic": "pub_test", "id": null }, "out": { "topic": "info/%topic%", "payload": "Test: %id%" } },
+"command":"publish","type":"internal"}
+
+{"title":"s_test","desc":"Script_test!",
+"arguments":{ },
+"command":"test","type":"script"}
+
+=end
