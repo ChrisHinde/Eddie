@@ -23,7 +23,13 @@ class Command < ActiveRecord::Base
 
 
   def run args, cmd_handler
-    puts "Running #{self.title}"
+    puts "Running Command:: #{self.title}"
+
+#    print "Arguments:   "
+#    p args
+#    print "Self.Args:   "
+#    p self.arguments
+#    puts "\n"
 
     unless self.arguments.nil?
       unless self.arguments['in'].nil?
@@ -40,7 +46,11 @@ class Command < ActiveRecord::Base
           end
 
           arguments.merge! args.select { |a,v| a[0] == '_' }
+
+          print "Merged Args: "
+          p arguments
         else
+          puts "No Out Args!!\n"
           arguments = args
         end
       else
@@ -48,6 +58,8 @@ class Command < ActiveRecord::Base
         self.arguments.each do |a,v|
           arguments[a] = v if arguments[a].nil?
         end
+          print "Mergd Args:  "
+          p arguments
       end
     end
 
@@ -61,10 +73,10 @@ class Command < ActiveRecord::Base
     end
   end
 
-  def replace_arguments arg, arguments
+  def self.replace_arguments arg, arguments
     arguments.each do |a,v|
-      arg.gsub! '%' + a + '%', v
-    end
+      arg.gsub! '%' + a + '%', v.nil? ? '0' : v.to_s
+    end unless arg.nil?
 
     return arg
   end

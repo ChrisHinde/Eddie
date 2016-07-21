@@ -17,17 +17,17 @@ class StateHandler < BaseHandler
     begin
       data = JSON.parse data_raw
     rescue
-      Eddie.messenger.respond topic, 'ERROR: Payload is not valid JSON'
+      Eddie.messenger.respond topic, 'ERROR: Payload is not valid JSON', data_raw, true
       return
     end
 
     if data['title'].empty?
-      Eddie.messenger.respond topic, 'ERROR: No title given'
+      Eddie.messenger.respond topic, 'ERROR: No title given', data_raw, true
       return
     end
 
     if State.exists?( title: data['title'] )
-      Eddie.messenger.respond topic, 'ERROR: A state called ' + data['title'] +' already exists'
+      Eddie.messenger.respond topic, 'ERROR: A state called ' + data['title'] +' already exists', data_raw, true
       return
     end
 
@@ -38,18 +38,21 @@ class StateHandler < BaseHandler
     state.label       = data['label']
     state.value_map   = data['value_map'].to_json
     state.value       = data['value']
+    state.value_type  = State::Types['string']
+    state.state_type  = State::StateTypes['default']
 
     begin
-      state.value_type  = State.type_to_int data['type']
+      state.state_type  = State.state_type_to_int data['type'] unless data['type'].nil?
+      state.value_type  = State.value_type_to_int data['value_type'] unless['value_type'].nil?
     rescue Exception => e
-      Eddie.messenger.respond topic, 'ERROR: Adding ' + data['title'] + ' > ' + e.message
+      Eddie.messenger.respond topic, 'ERROR: Adding ' + data['title'] + ' > ' + e.message, data_raw, true
       return
     end
 
     if state.save
-      Eddie.messenger.respond topic, 'SUCCESS: Added ' + data['title']
+      Eddie.messenger.respond topic, 'SUCCESS: Added ' + data['title'], data_raw
     else
-      Eddie.messenger.respond topic, 'ERROR: Adding ' + data['title'] + " > Couldn't save!"
+      Eddie.messenger.respond topic, 'ERROR: Adding ' + data['title'] + " > Couldn't save!", data_raw, true
     end
     p state
 
@@ -82,21 +85,94 @@ class StateHandler < BaseHandler
     return states.to_json
   end
 
+  def send_info topic, payload, rest = nil
+    stt_n = rest.nil? ? payload : rest
+
+    puts "States:Send_Info > #{stt_n}"
+
+    stt = State.find_by title: stt_n
+
+    unless stt.nil?
+      state = {
+        id:    stt.id,
+        title: stt.title,
+        desc:  stt.description,
+        type:  stt.state_type,
+        label: stt.label,
+        value:      stt.value,
+        value_type: stt.value_type,
+        value_map:  stt.value_map
+      }
+
+      Eddie.messenger.respond topic, state.to_json, payload
+    else
+      Eddie.messenger.respond topic, "ERROR: No such state > #{stt_n}", payload, true
+    end
+  end
+
+  def just_state topic, payload, meth = nil, rest = nil
+    stt_n = meth.nil? ? payload : meth
+    args = {}
+    is_json = false
+    with_label = true
+    map_value = true
+
+    puts "States:Just_State > #{stt_n}"
+
+    stt = State.find_by title: stt_n
+
+    unless payload.nil?
+      begin
+        args = JSON.parse payload
+
+        with_label = args['with_label'] unless args['with_label'].nil?
+        map_value  = args['map_value'] unless args['map_value'].nil?
+
+        is_json = true
+      rescue
+        puts "Not JSON!"
+      end
+    end
+
+    unless stt.nil?
+      case rest
+      when "set"
+        r = false
+        if is_json
+          r = stt.set_value args['value']
+        else
+          r = stt.set_value payload
+        end
+
+        if r
+          Eddie.messenger.respond topic, "SUCCESS: Value set to " + stt.get_value(with_label, map_value), payload
+        else
+          Eddie.messenger.respond topic, "ERROR: Couldn't set value!", payload, true
+        end
+      else
+        Eddie.messenger.respond topic, stt.get_value(with_label, map_value), payload
+      end
+    else
+      Eddie.messenger.respond topic, "ERROR: No such state > #{stt_n}", payload, true
+    end
+  end
+
   def call( topic, payload )
     top = topic.split('/states/').last
     meth, rest = top.split('/',2)
 
     case meth
     when 'list'
-      Eddie.messenger.respond topic, list(payload, rest)
+      Eddie.messenger.respond topic, list(payload, rest), payload
     when 'add'
       add_state topic, payload, rest
     when 'info'
-      send_info topic, payload
+      send_info topic, payload, rest
 #    when 'types'
 #      Eddie.messenger.respond topic, @@types.keys.to_json
     else
-      Eddie.messenger.respond topic, "Unknown method: #{meth}"
+      just_state topic, payload, meth, rest
+      #Eddie.messenger.respond topic, "Unknown method: #{meth}"
     end
   end
 
@@ -107,3 +183,31 @@ end
 puts "StateHandler Loading"
 Eddie.register "states", StateHandler.new
 
+=begin
+{ "map_value": true, "with_label": false }
+
+eddie/states/add
+{
+        "title": "temp_room",
+        "desc": "The temperature in the room",
+        "label": "C",
+        "value": 0,
+        "value_map": 0,
+        "value_type": "float"
+}
+
+{
+	"title": "door_bell",
+	"desc": "The bell at the door",
+	"label": "",
+	"type": "momentary",
+	"value": false,
+	"value_map": {
+		"false": "silent",
+		"true": "ringing"
+	},
+	"value_type": "bool"
+}
+
+
+=end

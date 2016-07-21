@@ -5,7 +5,7 @@ E_PORT = 4042
 require 'socket'
 require 'active_record'
 require 'yaml'
-require 'pi_piper'
+#require 'pi_piper'
 
 PROJECT_ROOT = File.dirname(File.absolute_path(__FILE__))
 
@@ -24,11 +24,11 @@ class Eddie
   def self.main(port)
     init
 
-    @@mqtt = EddieMQTT.new @config['mqtt_server'], @config['mqtt_port'], @config['mqtt_id']
+    @@mqtt = EddieMQTT.new @@config['mqtt_server'], @@config['mqtt_port'], @@config['mqtt_id']
 
     load_handlers
 
-    port = @config['port']
+    port = @@config['port']
     server = TCPServer.open(port)
 
     puts "\n======================================="
@@ -117,6 +117,9 @@ class Eddie
   def self.messenger
     @@mqtt
   end
+  def self.conf
+    @@config
+  end
 
   private
 #    config = nil
@@ -129,7 +132,7 @@ class Eddie
 
       require PROJECT_ROOT + '/config/schema.rb'
 
-      @config = YAML::load_file('config/config.yml')
+      @@config = YAML::load_file('config/config.yml')
     end
 
     def self.load_handlers

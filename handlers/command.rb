@@ -5,10 +5,16 @@ class CommandHandler < BaseHandler
 
   SCRIPT_DIR = 'commands/'
 
+  def self.handler
+    @@_handler
+  end
+
   def initialize
     Eddie.messenger.subscribe 'commands/#', self
 
     @@types = { 'internal' => 1, 'script' => 3 }
+
+    @@_handler = self
   end
 
   def self.add( params, thread )
@@ -57,8 +63,26 @@ class CommandHandler < BaseHandler
     else
       Eddie.messenger.respond topic, 'ERROR: Adding ' + data['title'] + " > Couldn't save!"
     end
-#    p cmd
   end
+
+
+  def delete_cmd topic, payload, rest = nil
+    cmd = rest.nil? ? payload : rest
+
+    puts "Delete Command: #{cmd}"
+
+    comm = Command.find_by title: cmd
+
+    if comm.nil?
+      Eddie.messenger.respond topic, "ERROR: No such command > #{cmd}"
+    else
+      comm.destroy
+
+      Eddie.messenger.respond topic, "SUCCESS: Deleted command #{cmd}"
+    end
+
+  end
+
 
   def send_info topic, payload
     cmd = Command.find_by title: payload
@@ -89,14 +113,10 @@ class CommandHandler < BaseHandler
     if com.nil?
       Eddie.messenger.respond topic, "ERROR: No such command > #{cmd}"
     else
-#      p payload
-#      p rest
-
       arguments = { '_topic' => topic, '_payload' => payload }
 
       begin
         args = JSON.parse payload
-        p args
         args.each do |k,v|
           arguments[k] = v unless k.first == '_'
         end
@@ -113,7 +133,7 @@ class CommandHandler < BaseHandler
     when 'publish'
       raise "No arguments given for 'publish'" if arguments.nil?
       Eddie.messenger.publish arguments['topic'], arguments['payload']
-      Eddie.messenger.respond arguments['_topic'], "SUCCESS: Published to '" + arguments['topic'] + "'"
+#      Eddie.messenger.respond arguments['_topic'], "SUCCESS: Published to '" + arguments['topic'] + "'"
     else
       raise "Unknown internal command: '#{cmd_name}'"
     end
@@ -124,10 +144,8 @@ class CommandHandler < BaseHandler
 
     filename = PROJECT_ROOT + '/' + SCRIPT_DIR + cmd_name + '.rb'
 
-    p filename
-
     if File.exists? filename
-      require filename
+      load filename
 
       script_main arguments, cmd_name
     else
@@ -137,7 +155,7 @@ class CommandHandler < BaseHandler
 
 
   def methods_str
-    return "[list,add,info,types,run]"
+    return "[list,add,delete,info,types,run]"
   end
 
   def list #topic, payload
@@ -153,7 +171,6 @@ class CommandHandler < BaseHandler
   end
 
   def call( topic, payload )
-#    meth = topic.split('/').last
     top = topic.split('/commands/').last
     meth, rest = top.split('/',2)
 
@@ -162,6 +179,8 @@ class CommandHandler < BaseHandler
       Eddie.messenger.respond topic, list
     when 'add'
       add_cmd topic, payload, rest
+    when 'delete'
+      delete_cmd topic, payload, rest
     when 'info'
       send_info topic, payload
     when 'types'
@@ -177,6 +196,7 @@ end
 
 puts "Command Handler Loading"
 Eddie.register "commands", CommandHandler.new
+
 =begin
 {"title":"pub","desc":"Publish!",
 "arguments":{"in": { "topic": "pub_test", "id": null }, "out": { "topic": "info/%topic%", "payload": "Test: %id%" } },
@@ -186,4 +206,11 @@ Eddie.register "commands", CommandHandler.new
 "arguments":{ },
 "command":"test","type":"script"}
 
+{
+ "title": "say",
+ "desc": "Say something",
+ "arguments": {},
+ "command": "say",
+ "type": "script"
+}
 =end

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+SAY=$@
+
+echo "Saying: "
+echo $SAY
+
+pico2wave -w=/tmp/eddie.wav "$SAY"
+aplay /tmp/eddie.wav 
+rm /tmp/eddie.wav

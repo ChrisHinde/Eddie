@@ -1,4 +1,3 @@
-
 ActiveRecord::Schema.define do
 
   unless ActiveRecord::Base.connection.data_sources.include? 'commands'
@@ -18,12 +17,15 @@ ActiveRecord::Schema.define do
     end
   end
 
+#  rename_column :events, :name, :title
+
   unless ActiveRecord::Base.connection.data_sources.include? 'events'
     create_table :events do |table|
-      table.column :name,        :string
+      table.column :title,       :string
       table.column :arguments,   :string
       table.column :description, :text
       table.column :event_type,  :integer
+      table.column :conditions,  :text
     end
   end
 
@@ -35,17 +37,29 @@ ActiveRecord::Schema.define do
     end
   end
 
+  add_column :states, :do_log, :bool
+
   unless ActiveRecord::Base.connection.data_sources.include? 'states'
     create_table :states do |table|
       table.column :title,        :string
+      table.column :state_type,   :integer
       table.column :description,  :text
       table.column :label,        :string
       table.column :value_type,   :integer
       table.column :value,        :binary
       table.column :value_map,    :text
+      table.column :do_log,       :bool
     end
   end
 
+  unless ActiveRecord::Base.connection.data_sources.include? 'logs'
+    create_table :logs do |table|
+      table.column :state,    :string
+      table.column :state_id, :integer
+      table.column :value,    :binary
+      table.column :extra,    :string
+    end
+  end
 
   unless ActiveRecord::Base.connection.data_sources.include? 'users'
     create_table :users do |table|
@@ -55,8 +69,6 @@ ActiveRecord::Schema.define do
     end
   end
 
-#  add_column :macro_commands, :arguments, :text
-
   unless ActiveRecord::Base.connection.data_sources.include? 'macro_commands'
     create_table :macro_commands do |table|
       table.column :macro_id,    :integer
@@ -65,10 +77,12 @@ ActiveRecord::Schema.define do
     end
   end
 
+
   unless ActiveRecord::Base.connection.data_sources.include? 'event_macros'
     create_table :event_macros do |table|
       table.column :event_id,  :integer
       table.column :macro_id,  :integer
+      table.column :arguments,   :text
     end
   end
 
@@ -76,6 +90,7 @@ ActiveRecord::Schema.define do
     create_table :event_tasks do |table|
       table.column :event_id, :integer
       table.column :task_id,  :integer
+      table.column :arguments,   :text
     end
   end
 
@@ -83,6 +98,7 @@ ActiveRecord::Schema.define do
     create_table :task_macros do |table|
       table.column :task_id,   :integer
       table.column :macro_id,  :integer
+      table.column :arguments,   :text
     end
   end
 
@@ -90,6 +106,7 @@ ActiveRecord::Schema.define do
     create_table :task_commands do |table|
       table.column :task_id,     :integer
       table.column :command_id,  :integer
+      table.column :arguments,   :text
     end
   end
 
