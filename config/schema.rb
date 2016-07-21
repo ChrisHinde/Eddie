@@ -37,7 +37,7 @@ ActiveRecord::Schema.define do
     end
   end
 
-  add_column :states, :do_log, :bool
+#  add_column :states, :zone, :text
 
   unless ActiveRecord::Base.connection.data_sources.include? 'states'
     create_table :states do |table|
@@ -48,6 +48,7 @@ ActiveRecord::Schema.define do
       table.column :value_type,   :integer
       table.column :value,        :binary
       table.column :value_map,    :text
+      table.column :zone,         :text
       table.column :do_log,       :bool
     end
   end
