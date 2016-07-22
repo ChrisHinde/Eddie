@@ -2,3 +2,4 @@ port: 4242
 mqtt_server: localhost
 mqtt_port: 1883
 mqtt_id: EDDIE_MAIN
+audio_player: aplay

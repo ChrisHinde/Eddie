@@ -9,7 +9,7 @@ def script_main arguments, cmd_name
     count = arguments['count'].nil? ? 1 : arguments['count'] 
   end
 
-
-  system "mplayer `find #{sound_dir} -type f | shuf -n #{count}`" 
+  player = Eddie.conf['audio_player']
+  system player + " `find #{sound_dir} -type f | shuf -n #{count}`" 
 
 end

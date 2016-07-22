@@ -15,7 +15,7 @@ def script_main arguments, cmd_name
 
   
 
-
-  system "mplayer #{sound_dir}#{file}" 
+  player = Eddie.conf['audio_player']
+  system player + " #{sound_dir}#{file}" 
 
 end
