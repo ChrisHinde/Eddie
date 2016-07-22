@@ -162,11 +162,11 @@ class EddieMQTT
     self.publish topic, payload
   end
 
-  def respond( topic, payload, add_prefix = true, orig_payload = nil, is_error = false )
+  def respond( topic, payload, orig_payload = nil, is_error = false, add_prefix = true )
     topic = topic + "/response"
 
     unless orig_payload.nil?
-      topic = 'responses/' + orig_payload['_respond_via'] + (is_error ? '' : '/error') unless orig_payload['_respond_via'].nil?
+      topic = 'responses/' + orig_payload['_respond_via'] + (is_error ? '/error' : '') unless orig_payload['_respond_via'].nil?
     end
 
     puts "Respond: #{topic} > '#{payload}'"
