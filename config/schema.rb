@@ -55,10 +55,10 @@ ActiveRecord::Schema.define do
 
   unless ActiveRecord::Base.connection.data_sources.include? 'logs'
     create_table :logs do |table|
-      table.column :state,    :string
-      table.column :state_id, :integer
-      table.column :value,    :binary
-      table.column :extra,    :string
+      table.column :state_title, :string
+      table.column :state_id,    :integer
+      table.column :value,       :binary
+      table.column :extra,       :string
     end
   end
 

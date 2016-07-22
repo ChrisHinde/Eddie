@@ -1,4 +1,5 @@
 class State < ActiveRecord::Base
+  has_many :logs
 
   serialize :value_map, JSON
 
@@ -109,8 +110,14 @@ class State < ActiveRecord::Base
     end
 
     EventHandler.state_value_changed self, value, value_old
+
+    if self.do_log
+      Log.log_state self, value
+    end
+
     return true
   end
+
 
   def remove_label value
     if value.is_a? String and value.end_with? self.label
