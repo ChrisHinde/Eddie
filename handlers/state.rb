@@ -35,6 +35,7 @@ class StateHandler < BaseHandler
 
     state.title       = data['title']
     state.description = data['desc']
+    state.zone        = data['zone'] unless data['zone'].nil?
     state.label       = data['label']
     state.value_map   = data['value_map'].to_json
     state.value       = data['value']
@@ -96,6 +97,7 @@ class StateHandler < BaseHandler
       state = {
         id:    stt.id,
         title: stt.title,
+        zone:  stt.zone,
         desc:  stt.description,
         type:  stt.state_type,
         label: stt.label,
@@ -111,7 +113,34 @@ class StateHandler < BaseHandler
   end
 
   def just_state topic, payload, meth = nil, rest = nil
-    stt_n = meth.nil? ? payload : meth
+    stt_n = payload # meth.nil? ? payload : (rest.nil? ? meth : rest )
+    zone = ''
+
+    if payload.include? '{'
+      payload = JSON.parse payload
+      stt_n   = payload['state'].nil? ? '' : palyoad['state']
+    end
+
+    # Ughhh.. This became rather ugly, might try to find a better way for specifying zones
+    unless meth.nil?
+      if rest.nil?
+        stt_n = meth
+        rest  = ''
+      else
+        if rest.include? '/'
+          stt_n, rest = rest.split '/', 2
+        else
+          stt_n = rest
+        end
+
+        if stt_n == 'set'
+          stt_n = meth
+        else
+          zone  = meth
+        end
+      end
+    end
+
     args = {}
     is_json = false
     with_label = true
