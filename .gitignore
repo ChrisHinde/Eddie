@@ -1,3 +1,4 @@
 sounds/*.*
 */.*
 log/*.log
+db/*
