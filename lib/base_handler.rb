@@ -1,3 +1,6 @@
+class NotFoundException < StandardError
+end
+
 class BaseHandler
 
   def self.incoming( params_str, thread )
