@@ -37,7 +37,6 @@ ActiveRecord::Schema.define do
     end
   end
 
-#  add_column :states, :zone, :text
 
   unless ActiveRecord::Base.connection.data_sources.include? 'states'
     create_table :states do |table|
@@ -48,8 +47,26 @@ ActiveRecord::Schema.define do
       table.column :value_type,   :integer
       table.column :value,        :binary
       table.column :value_map,    :text
-      table.column :zone,         :text
+      table.column :zone_id,      :integer
+      table.column :group_id,     :integer
       table.column :do_log,       :bool
+      table.column :locked,       :bool
+    end
+  end
+
+  unless ActiveRecord::Base.connection.data_sources.include? 'zones'
+    create_table :zones do |table|
+      table.column :title,       :string
+      table.column :description, :text
+      table.column :icon,        :string
+    end
+  end
+
+  unless ActiveRecord::Base.connection.data_sources.include? 'groups'
+    create_table :groups do |table|
+      table.column :title,       :string
+      table.column :description, :text
+      table.column :icon,        :string
     end
   end
 
