@@ -1,5 +1,7 @@
 class State < ActiveRecord::Base
   has_many :logs
+  belongs_to :group
+  belongs_to :zone
 
   serialize :value_map, JSON
 
