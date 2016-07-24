@@ -209,7 +209,8 @@ class EddieMQTT
       end
 
       @_listeners.each do |l_top,listeners|
-        l_top = l_top.sub('+','([\w:\[\]]*)').sub('#','([\w:\[\]/]*)\Z')
+        l_top = l_top.sub('+','([\w:\[\]]*)').sub('#','([\w:\[\]/]*)')
+        l_top = l_top + '\Z'
 
         if topic.match l_top
           puts "Topic match: " + topic + " = " + l_top
