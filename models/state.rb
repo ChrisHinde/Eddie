@@ -37,6 +37,84 @@ class State < ActiveRecord::Base
     return type
   end
 
+  def self.get_state part1, part2, payload, topic, filter = nil, force_zone = false, return_do_set = false
+    state      = nil
+    state_name = ''
+    zone_name  = ''
+    zone_id    = nil
+    do_set     = false
+
+#print "Filter:"
+#p filter
+
+#print "P1:"
+#p part1
+#print "P2:"
+#p part2
+
+    if part2 == 'set'
+      do_set = true
+      part2 = nil
+    elsif (! part2.nil? ) && (part2.end_with? '/set')
+      do_set = true
+      part2.chomp! '/set'
+    end
+
+    if payload.include? '{'
+      begin
+        payload    = JSON.parse payload
+        state_name = payload['state'].nil? ? '' : palyoad['state']
+        zone_name  = payload['zone'].nil? ? '' : palyoad['zone']
+      rescue
+        puts "GetState: Couldn't parse payload as JSON"
+      end
+    end
+
+    if part1 != '' && !part2.nil?
+      zone_name  = part1
+      state_name = part2
+    elsif ! part1.include? '/'
+      state_name = part1
+    else
+      zone_name,state_name = part1.split '/'
+    end
+
+#print "ZON:"
+#p zone_name
+
+#print "STN:"
+#p state_name
+
+    unless zone_name.empty?
+      zone = Zone.find_by title: zone_name
+      if zone.nil?
+        Eddie.messenger.respond topic, "ERROR: No such zone > #{zone_name}", payload, true
+        raise NotFoundException, "No such Zone > #{zone_name}!!"
+      end
+
+      zone_id = zone.id
+    end
+
+    if zone_id.nil? && !force_zone
+      states = self.where title: state_name
+#puts "======================================"
+#p states
+      state = states.to_a
+    else
+      state = self.find_by title: state_name, zone_id: zone_id
+    end
+
+
+    if state.nil?
+      state_name = zone_name + '/' + state_name unless zone_name.empty?
+
+      Eddie.messenger.respond topic, "ERROR: No such state > #{state_name}", payload, true
+      raise NotFoundException, "No such state > #{state_name}!!"
+    end
+
+    return return_do_set ? [state, do_set] : state
+  end
+
   def get_value with_label = true, map_value = true
     val = self.value
 
@@ -51,17 +129,15 @@ class State < ActiveRecord::Base
       end
     end
 
-    if map_value
+    if map_value && ! value_map.nil?
       begin
         val = value_map[val] unless value_map[val].nil?
       rescue
-        puts "Couldn't map value!"
+        puts "ERROR: Couldn't map value!"
       end
     end
 
-    p val
-
-    if with_label
+    if with_label && ! self.label.nil?
       return val.to_s + self.label
     else
       return val
@@ -114,14 +190,44 @@ class State < ActiveRecord::Base
     EventHandler.state_value_changed self, value, value_old
 
     if self.do_log
-      Log.log_state self, value
+#      Log.log_state self, value # TODO: Fix this! <<<<<<<
     end
 
     return true
   end
 
+  def get para
+    val = nil
+
+    case
+    when :do_log
+      val = self.do_log
+    when :locked
+      val = self.locked
+    end
+
+    unless val.nil?
+      if val == "t" || val == "true" || val == 1 || val == true
+        val = true
+      else
+        val = false
+      end
+    end
+
+    return val
+  end
+
+  def get_full_id
+    if self.zone.nil?
+      return self.title
+    else
+      return self.zone.title + '/' + self.title
+    end
+  end
 
   def remove_label value
+    return value if self.label.nil?
+
     if value.is_a? String and value.end_with? self.label
       value.chomp! self.label
     end
