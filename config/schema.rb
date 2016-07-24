@@ -37,7 +37,6 @@ ActiveRecord::Schema.define do
     end
   end
 
-
   unless ActiveRecord::Base.connection.data_sources.include? 'states'
     create_table :states do |table|
       table.column :title,        :string

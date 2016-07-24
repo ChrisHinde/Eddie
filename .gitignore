@@ -1,4 +1,5 @@
 sounds/*.*
-*/.*
+*/.*.swp
 log/*.log
 db/*
+.*.swp
